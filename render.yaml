@@ -20,8 +20,12 @@ services:
         value: pitstop
       - key: DB_SSLMODE
         value: verify-full
+      # Supabase signs its Postgres/pooler certificates with its own root CA,
+      # which is not in the system trust store. Its public root ships in the
+      # image (backend/certs; SHA-256 80:70:25:AD:...:72:E6:CA:FA). Use
+      # "system" instead for a provider with publicly trusted certificates.
       - key: PGSSLROOTCERT
-        value: system
+        value: /app/certs/supabase-prod-ca-2021.crt
       - key: REDIS_URL
         sync: false
       - key: AWS_STORAGE_BUCKET_NAME
