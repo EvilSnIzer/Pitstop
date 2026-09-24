@@ -1,0 +1,15 @@
+# Tested production dependency graph; constraints pin transitive dependencies too.
+-c constraints.txt
+Django==5.2.17
+djangorestframework==3.18.1
+djangorestframework-simplejwt==5.5.1
+drf-spectacular==0.30.0
+django-cors-headers==4.9.0
+google-genai==2.25.0
+gunicorn==26.2.0
+python-dotenv==1.2.3
+Pillow>=11.3,<13
+psycopg[binary]>=3.2,<4
+redis>=6,<8
+django-storages[s3]>=1.14,<2
+whitenoise>=6.9,<7

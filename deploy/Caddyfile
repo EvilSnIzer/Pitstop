@@ -1,0 +1,18 @@
+{$APP_HOST} {
+	request_body {
+		max_size 17MB
+	}
+	encode zstd gzip
+	header X-Frame-Options DENY
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	# Keep Django admin on a private network/VPN rather than publishing it here.
+	handle /health/* {
+		reverse_proxy backend:8000 {
+			header_up Host backend
+			header_up X-Forwarded-Proto https
+		}
+	}
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

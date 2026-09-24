@@ -1,0 +1,78 @@
+name: pitstop
+services:
+  db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: pitstop
+      POSTGRES_USER: pitstop
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a database password}
+    volumes: ["postgres:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pitstop -d pitstop"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  redis:
+    image: redis:7-bookworm
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["redis:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  backend:
+    build: ../backend
+    environment:
+      APP_ENV: production
+      DJANGO_DEBUG: "0"
+      DJANGO_ADMIN_ENABLED: "1"
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set a random secret}
+      DATABASE_URL: postgresql://pitstop:${POSTGRES_PASSWORD}@db:5432/pitstop
+      DB_SSLMODE: disable
+      REDIS_URL: redis://redis:6379/0
+      ALLOWED_HOSTS: backend,${APP_HOST}
+      CSRF_TRUSTED_ORIGINS: https://${APP_HOST}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      AI_USER_DAILY_CALLS: ${AI_USER_DAILY_CALLS:-100}
+      AI_GLOBAL_DAILY_CALLS: ${AI_GLOBAL_DAILY_CALLS:-2000}
+    volumes: ["media:/app/media"]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-H", "Host: backend", "-H", "X-Forwarded-Proto: https", "http://127.0.0.1:8000/health/ready/"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+  frontend:
+    build: ../frontend
+    environment:
+      APP_ENV: production
+      APP_ORIGIN: https://${APP_HOST}
+      API_PROXY_URL: http://backend:8000
+      COOKIE_SECURE: "1"
+    depends_on:
+      backend: { condition: service_healthy }
+    restart: unless-stopped
+  gateway:
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    environment:
+      APP_HOST: ${APP_HOST:?Set the public hostname}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [frontend]
+    restart: unless-stopped
+volumes:
+  postgres:
+  redis:
+  media:
+  caddy_data:
+  caddy_config:

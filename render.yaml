@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: pitstop-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerCommand: bash start-render.sh
+    healthCheckPath: /health/live/
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SCHEMA
+        value: pitstop
+      - key: DB_SSLMODE
+        value: verify-full
+      - key: PGSSLROOTCERT
+        value: system
+      - key: REDIS_URL
+        sync: false
+      - key: AWS_STORAGE_BUCKET_NAME
+        sync: false
+      - key: AWS_S3_ENDPOINT_URL
+        sync: false
+      - key: AWS_S3_REGION_NAME
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_REQUEST_CHECKSUM_CALCULATION
+        value: when_required
+      - key: AWS_RESPONSE_CHECKSUM_VALIDATION
+        value: when_required
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: AI_USER_DAILY_CALLS
+        value: "20"
+      - key: AI_GLOBAL_DAILY_CALLS
+        value: "100"

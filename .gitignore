@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+db.sqlite3
+media/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+.next/
+out/
+
+# Env
+.env
+.env.local
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Browser tests and TypeScript cache
+test-results/
+playwright-report/
+*.tsbuildinfo
+staticfiles/
+deploy/backups/
