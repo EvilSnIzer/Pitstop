@@ -191,12 +191,24 @@ jobs:
       # CI=1 makes playwright.config.ts start Django and the standalone Next.js
       # server itself. The elevated auth throttle applies to this test server
       # only, because every generated account shares one CI IP address.
+      # Failures are re-emitted as a single check annotation so the run summary
+      # is readable without opening the raw job log.
       - name: Run browser regressions
         working-directory: frontend
         env:
           CI: "1"
           NEXT_PUBLIC_DIRECT_API_URL: http://127.0.0.1:8000
-        run: npm run test:e2e
+        run: |
+          set +e
+          npm run test:e2e 2>&1 | tee /tmp/e2e.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            {
+              echo "Browser regressions failed (exit $status). Tail of the run:"
+              tail -n 60 /tmp/e2e.log
+            } | python -c 'import sys, urllib.parse; print("::error::" + urllib.parse.quote(sys.stdin.read()))'
+          fi
+          exit "$status"
 
       - name: Upload Playwright report
         if: failure()

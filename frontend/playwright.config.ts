@@ -29,4 +29,7 @@ export default defineConfig({
   use: {
     baseURL: process.env.PREVIEW_URL ?? "http://127.0.0.1:3000",
   },
+  // The "github" reporter turns each browser failure into a check annotation,
+  // so a failing run is readable from the run summary without opening raw logs.
+  reporter: process.env.CI ? [["dot"], ["github"]] : [["list"]],
 });
