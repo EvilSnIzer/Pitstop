@@ -40,7 +40,7 @@ class GeminiBudgetError(GeminiError):
 
 
 class DiagnosisResult(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
+    model_config = ConfigDict(strict=True, str_strip_whitespace=True)
     summary: str = Field(min_length=1, max_length=4000)
     recommended_service: str = Field(min_length=1, max_length=255)
     confidence: float = Field(ge=0, le=1, allow_inf_nan=False)
