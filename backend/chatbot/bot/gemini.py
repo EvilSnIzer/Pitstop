@@ -112,7 +112,21 @@ def _generate(parts, config=None) -> str:
                 model=MODEL, contents=parts, config=call_config
             )
             usage.record_tokens(ids, response.usage_metadata)
-            if not response.text:
+            text = (
+                response.text
+                if getattr(response, "text", None)
+                else (
+                    response.candidates[0].content.parts[0].text
+                    if getattr(response, "candidates", None)
+                    and response.candidates
+                    and getattr(response.candidates[0], "content", None)
+                    and getattr(response.candidates[0].content, "parts", None)
+                    and response.candidates[0].content.parts
+                    and getattr(response.candidates[0].content.parts[0], "text", None)
+                    else None
+                )
+            )
+            if not text:
                 raise GeminiError("The AI provider returned no usable text")
             logger.info(
                 "ai_call model=%s prompt=%s attempt=%s latency_ms=%s outcome=ok",
@@ -121,7 +135,7 @@ def _generate(parts, config=None) -> str:
                 attempt + 1,
                 int((time.monotonic() - started) * 1000),
             )
-            return response.text.strip()
+            return text.strip()
         except errors.APIError as exc:
             logger.warning(
                 "ai_call model=%s attempt=%s outcome=api_error code=%s message=%s",
