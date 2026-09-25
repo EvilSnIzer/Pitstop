@@ -54,7 +54,11 @@ async function proxy(
       process.env.APP_ORIGIN ??
       (process.env.RENDER_EXTERNAL_HOSTNAME
         ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}`
-        : undefined);
+        : process.env.VERCEL_PROJECT_PRODUCTION_URL
+          ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+          : process.env.VERCEL_URL
+            ? `https://${process.env.VERCEL_URL}`
+            : undefined);
     if (expected && origin !== expected)
       return problem("Origin not allowed.", 403, "csrf_failed");
     if (process.env.APP_ENV === "production" && !expected)
