@@ -54,7 +54,7 @@ All backend provider calls were mocked/blocked. Browser diagnosis/booking fixtur
 
 ## Not established by this work
 
-1. **Container execution/cloud rollout:** Dockerfiles were written, standalone frontend execution was tested and Compose/Caddy configuration was validated. Docker images were not built/run in this workspace. CI jobs are configured, but a remote CI run was not observed.
+1. **Container execution/cloud rollout:** Dockerfiles were written, standalone frontend execution was tested and Compose/Caddy configuration was validated. Docker images were not built/run in this workspace. **Update 25 September 2026:** `.github/workflows/ci.yml` now exists and a remote run was observed — all four jobs (backend SQLite, backend PostgreSQL+Redis, frontend, Chromium browser regressions) passed on pull request #4; see [DELIVERABLES.md](DELIVERABLES.md).
 2. **Recovery and uptime:** No real backup/restore drill, failover exercise or measured RPO/RTO. The single-host stack is not highly available.
 3. **Production capacity:** No sustained load/soak test, capacity guarantee or installed hosted alerting service. Redis-backed production throttling was configured, not load-tested here.
 4. **Live Gemini quality:** No real-provider validation, diagnostic accuracy benchmark or calibrated confidence. No key was required or exposed for testing.

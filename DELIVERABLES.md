@@ -66,19 +66,51 @@ and history.
 
 Two environment limits, stated plainly:
 
-- **The browser regression suite was not run here.** Playwright's Chromium download is
-  blocked in this workspace's network, so `npm run test:e2e` could not execute. It now runs
-  in the [`e2e` CI job](.github/workflows/ci.yml); prior local results are in
-  [VERIFICATION.md](VERIFICATION.md).
+- **The browser regression suite cannot run in this workspace.** Playwright's Chromium
+  download is blocked here, so `npm run test:e2e` was executed in CI instead — see below.
 - **`ffprobe` had to be supplied manually.** The system package manager is unreachable, so a
   static `ffprobe` build was placed on `PATH` for the run above. Without it, audio
   validation returns `503` instead of `400` and three hardening tests fail (95 passed /
   3 failed); with it, all 98 pass. Image uploads only need Pillow.
 
+## Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) — referenced by `README.md` and
+`VERIFICATION.md` but absent from the repository until this change — runs on pushes to
+`main`, on pull requests and on demand. On [pull request #4](https://github.com/EvilSnIzer/Pitstop/pull/4)
+(run 36172644519) every job passed:
+
+| Job | Result |
+|---|---|
+| Backend (Python 3.13, SQLite) | **pass** in 2m 5s |
+| Backend (Python 3.13, PostgreSQL 17 + Redis 7) | **pass** in 1m 28s |
+| Frontend (Node 24) — lint, typecheck, proxy tests, standalone build, audit | **pass** in 46s |
+| Browser regressions (Chromium) — 14 specs across `auth.spec.ts` and `workspace.spec.ts` | **pass** in 2m 0s |
+
+The first CI run of the browser job failed, and the failure was real: Playwright's server
+was started without `APP_ORIGIN`, and the BFF rejects any mutation whose `Origin` it does
+not recognise, so every UI-driven request returned `403 csrf_failed`. The same gap affected
+the documented `npm run dev` flow. `playwright.config.ts` now starts the server with
+`APP_ORIGIN` set to the browser's base URL, and `frontend/.env.example` sets
+`APP_ORIGIN=http://localhost:3000`; matching origins reach the API while
+`http://evil.example` is still rejected.
+
 ## Permanent hosting
 
 No cloud account, credential or paid resource was available in this session, so no permanent
-hostname has been provisioned. The repository is deployment-ready:
+hostname has been provisioned by this work. Two things are true about the account this
+repository already lives in:
+
+- **The existing Vercel Git integration currently fails.** Deploying this branch produced a
+  failed deployment (check `Vercel`: *"Deployment has failed"*). The cause is reproducible
+  locally: `next.config.mjs` throws when `VERCEL` is set without `API_PROXY_URL`,
+  `APP_ORIGIN` and `NEXT_PUBLIC_DIRECT_API_URL`, and running `VERCEL=1 npx next build`
+  with no variables fails with exactly *"Vercel requires API_PROXY_URL, APP_ORIGIN and
+  NEXT_PUBLIC_DIRECT_API_URL"*. The same build succeeds when those three are provided, so
+  setting them in Vercel → Project Settings → Environment Variables and redeploying is what
+  unblocks it. `API_PROXY_URL` must point at a deployed Django API, which does not exist
+  yet — the Vercel route therefore needs the API deployed first.
+- **The one-click path has no such dependency.** The repository is deployment-ready:
 
 1. Click **Deploy to Render** in [README.md](README.md) (or follow
    [deploy/RENDER_ONE_CLICK.md](deploy/RENDER_ONE_CLICK.md)) — the root
