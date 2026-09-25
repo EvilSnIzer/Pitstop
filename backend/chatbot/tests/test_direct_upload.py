@@ -90,6 +90,7 @@ def test_private_storage_redirect_is_owner_checked(api_client, settings):
     uploaded = upload(ticket(api_client)).json()
     media = MediaFile.objects.get(pk=uploaded["id"])
     settings.AWS_STORAGE_BUCKET_NAME = "private-test-bucket"
+    settings.MEDIA_STORAGE = "s3"
     with patch.object(
         media.file.storage, "url", return_value="https://storage.example/signed"
     ) as sign:

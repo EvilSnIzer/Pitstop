@@ -37,6 +37,24 @@ class ChatSession(models.Model):
         return f"Session {self.pk} ({self.status})"
 
 
+class StoredObject(models.Model):
+    """Blob row behind chatbot.storage.DatabaseStorage (MEDIA_STORAGE=database).
+
+    Free Render instances lose their filesystem on every restart and cannot
+    attach persistent disks, so the database is the only durable private
+    storage available. Upload validation caps files at 15 MiB; the free
+    Render Postgres plan holds 1 GB.
+    """
+
+    name = models.CharField(max_length=255, primary_key=True)
+    content = models.BinaryField()
+    size = models.PositiveBigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
 class MediaFile(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="media_files"

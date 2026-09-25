@@ -1,6 +1,6 @@
 # Pitstop hardening — delivery and verification
 
-**Subsequent hosting changes:** see [HOSTING_VERIFICATION.md](HOSTING_VERIFICATION.md) for the latest Vercel/Render adaptation tests. The PostgreSQL counts below belong to the earlier hardening run, not a new hosted rollout.
+**Subsequent hosting changes:** see [HOSTING_VERIFICATION.md](HOSTING_VERIFICATION.md) for the latest hosting-adaptation tests (all-Render one-click Blueprint, and the earlier Vercel/Render variant). The PostgreSQL counts below belong to the earlier hardening run, not a new hosted rollout.
 
 **Verified locally: 25 September 2026 (Asia/Calcutta).** This records actual checks performed, not a self-awarded production-readiness score.
 

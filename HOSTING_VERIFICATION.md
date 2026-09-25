@@ -1,4 +1,41 @@
-# Vercel + Render adaptation — local verification
+# All-Render one-click adaptation — local verification
+
+**25 September 2026.** The selected deployment moved to **one Blueprint, everything on Render's free plan** (website, API, Postgres, Redis) — no Supabase, Upstash or Vercel account. Guide: [deploy/RENDER_ONE_CLICK.md](deploy/RENDER_ONE_CLICK.md).
+
+## Implemented
+
+- `render.yaml` rewritten: `pitstop-web` + `pitstop-api` free Docker web services, free Postgres 16 (`databases:`, `ipAllowList: []` = private network only) and free Key Value/Valkey (`type: keyvalue`, `persistenceMode: off`), with `DATABASE_URL` via `fromDatabase`, `REDIS_URL` via `fromService connectionString` and `API_PROXY_URL=http://$(API_HOSTPORT)` via `fromService hostport`; `DJANGO_SECRET_KEY` uses `generateValue: true`; only `GEMINI_API_KEY` remains an optional prompt.
+- `MEDIA_STORAGE=database`: new `StoredObject` model + migration `0004` and `chatbot/storage.py` `DatabaseStorage` keep private uploads in Postgres rows, because free Render instances have ephemeral disks and cannot attach persistent volumes. Production-on-Render now rejects only `filesystem` storage (S3 remains supported); the owner-checked media endpoint streams database-stored bytes through the existing non-S3 branch.
+- `TRUST_PRIVATE_NETWORK_HOST=1` + `config/middleware.py`: Render's private-network hostnames are dynamic single-label names (`<service>-<hash>`) that cannot be listed in `ALLOWED_HOSTS`; the middleware rewrites such hosts (which browsers cannot produce or resolve) to the service's public hostname. Dotted/unknown hosts remain rejected.
+- BFF origin check falls back to `RENDER_EXTERNAL_HOSTNAME` when `APP_ORIGIN` is unset, so the frontend needs no build-time knowledge of its own URL; explicit `APP_ORIGIN` still wins (custom domains).
+- `start-render.sh` stretches a short `DJANGO_SECRET_KEY` (Render's `generateValue: true` = base64-encoded 256-bit, 44 chars) to a 128-char SHA-512 hex key before migrations/Gunicorn start, so the generated secret satisfies Django's 50-character deploy-check heuristic (`security.W009`) and the app's production guard without weakening entropy; 50+ character manual secrets pass through unchanged.
+- Supabase-specific defaults (`PGSSLROOTCERT`, `DATABASE_SCHEMA`, `DB_SSLMODE=verify-full`, `AWS_*`, `CORS_ALLOWED_ORIGINS`) removed from the Blueprint — same-origin BFF calls need no CORS or upload tickets; the split-provider variant keeps working via dashboard overrides documented in `deploy/VERCEL_RENDER.md`.
+- `NEXT_TELEMETRY_DISABLED=1` in the frontend builder stage; `/login` (statically prerendered) is the frontend health-check path.
+
+## Executed checks (sandbox, Python 3.11 / Node 22 substitutes for the pinned 3.13 / 24)
+
+| Check | Result |
+|---|---|
+| New Render-path backend tests (`test_render_deploy.py`) | **9 passed**: storage save/open/size/delete roundtrip, no-URL guarantee, API upload persisted as a DB blob and streamed back byte-identical, dedupe to one blob, private-host trust matrix (single-label accepted when enabled, rejected when disabled, dotted unknown host rejected, public hostname accepted) |
+| Full backend suite on SQLite | **97 passed, 2 skipped (PostgreSQL-only), 3 failed** — all 3 failures are the audio `ffprobe` validation tests returning 503 because the sandbox has no `ffprobe` binary; pre-existing environment limitation, unrelated to this change |
+| `manage.py check`, `makemigrations --check`, `spectacular --validate --fail-on-warn` | Passed; migration `0004_storedobject` generated, no drift |
+| Ruff / Black | Passed (line-length 100) |
+| Frontend `npm run typecheck`, `npm run lint` | Passed |
+| Frontend proxy tests | **11 passed**, including 2 new: Render-hostname origin fallback and fail-closed 503 when no origin is known |
+| Production standalone frontend build (`npm run build`) | Passed; `/login` prerendered static, `.next/standalone` includes `public/` and `.next/static/` |
+| Render-topology end-to-end simulation (real HTTP) | Passed: standalone BFF with `API_PROXY_URL=http://<single-label-host>:8000` (mapped via `/etc/hosts`, as Render's private DNS would) drove register → session → multipart PNG upload → byte-identical media download through Django with `TRUST_PRIVATE_NETWORK_HOST=1`, `MEDIA_STORAGE=database`; the blob landed as one `chatbot_storedobject` row with an empty filesystem media dir; `/health/live/` and `/health/ready/` returned 200; an unrelated dotted Host was still rejected with 400 |
+| Production `manage.py check --deploy --fail-level WARNING` with Render-shaped env (generated 44-char secret stretched by `start-render.sh` logic, `DATABASE_URL`/`REDIS_URL` placeholders, `MEDIA_STORAGE=database`) | Passed with no warnings; production guard rejects `MEDIA_STORAGE=filesystem` on Render and invalid values |
+| `render.yaml` field validation | Every field/enum checked against Render's published JSON Schema (`render.com/schema/render.yaml.json`, fetched 25 Sep 2026): `keyvalue` type with required `ipAllowList`, `free` plans for server/postgres/keyValue, `postgresMajorVersion: "16"`, `fromDatabase`/`fromService` `connectionString`/`hostport` properties, `generateValue`, `sync: false`, `dockerCommand`, `healthCheckPath`. Full programmatic schema validation was not run (schema fetched in chunks) |
+
+## Still unverified
+
+- An actual account-owned Render deploy: live Blueprint sync of this exact `render.yaml` (including `$(API_HOSTPORT)` interpolation at create time), free-plan Docker build times/memory, and the end-to-end smoke test in [the guide](deploy/RENDER_ONE_CLICK.md).
+- Live Valkey-free ↔ Django `RedisCache` throttle behavior and the 30-day free-Postgres expiry/renewal path.
+- Real cold-start timings for two chained free services.
+
+---
+
+# Earlier Vercel + Render adaptation — local verification
 
 **25 September 2026, Asia/Calcutta.** Selected for a job-application assignment, with a $0 hosting budget.
 

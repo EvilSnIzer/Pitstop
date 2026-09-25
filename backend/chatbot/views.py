@@ -271,7 +271,7 @@ class MediaView(APIView):
     @extend_schema(responses={(200, "application/octet-stream"): bytes, 302: None})
     def get(self, request, media_id):
         media = get_object_or_404(models.MediaFile, pk=media_id, user=request.user)
-        if settings.AWS_STORAGE_BUCKET_NAME:
+        if settings.MEDIA_STORAGE == "s3":
             # Only the owner can mint a short-lived read URL; file bytes bypass serverless limits.
             response = HttpResponseRedirect(media.file.storage.url(media.file.name, expire=60))
             response["Cache-Control"] = "private, no-store"

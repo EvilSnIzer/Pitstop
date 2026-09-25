@@ -134,6 +134,56 @@ test("private media redirects bypass the serverless response body", async () => 
   assert.equal(await response.text(), "");
 });
 
+test("Render's own hostname guards mutations when APP_ORIGIN is unset", async () => {
+  process.env.APP_ENV = "production";
+  process.env.RENDER_EXTERNAL_HOSTNAME = "pitstop-web-ab12.onrender.com";
+  const post = (origin: string) =>
+    proxy.POST(
+      new NextRequest(
+        "https://pitstop-web-ab12.onrender.com/api/v1/sessions/",
+        {
+          method: "POST",
+          headers: { "X-Pitstop-Request": "1", Origin: origin },
+        },
+      ),
+      { params: Promise.resolve({ path: ["v1", "sessions"] }) },
+    );
+  try {
+    // Origin check passes; the mock upstream then rejects the missing JWT.
+    const allowed = await post("https://pitstop-web-ab12.onrender.com");
+    assert.equal(allowed.status, 401);
+    await allowed.body?.cancel();
+    const blocked = await post("https://attacker.example");
+    assert.equal(blocked.status, 403);
+  } finally {
+    delete process.env.APP_ENV;
+    delete process.env.RENDER_EXTERNAL_HOSTNAME;
+  }
+});
+
+test("production mutations fail closed when no origin is known", async () => {
+  process.env.APP_ENV = "production";
+  try {
+    const response = await proxy.POST(
+      new NextRequest("https://pitstop.example.com/api/v1/sessions/", {
+        method: "POST",
+        headers: {
+          "X-Pitstop-Request": "1",
+          Origin: "https://pitstop.example.com",
+        },
+      }),
+      { params: Promise.resolve({ path: ["v1", "sessions"] }) },
+    );
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), {
+      detail: "App origin is not configured.",
+      code: "app_configuration_error",
+    });
+  } finally {
+    delete process.env.APP_ENV;
+  }
+});
+
 test("production login sets secure HttpOnly Lax cookies, not browser JWT JSON", async () => {
   process.env.APP_ENV = "production";
   process.env.APP_ORIGIN = "https://pitstop.example.com";

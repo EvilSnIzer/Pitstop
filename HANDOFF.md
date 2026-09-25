@@ -31,7 +31,7 @@ Replace `YOUR_OWNER/YOUR_REPOSITORY` with the actual repository. Configure Git a
 
 ## Hosting choice
 
-The requested budget is **$0**, and the selected stack is **Vercel frontend + Render Free backend**, with Supabase/Upstash free services for persistence and cache. Follow [the exact deployment guide](deploy/VERCEL_RENDER.md). The source includes provider configuration, direct upload tickets and private storage redirects. Local verification is recorded in [HOSTING_VERIFICATION.md](HOSTING_VERIFICATION.md). No live resources have been provisioned, and no paid resources are authorized.
+The requested budget is **$0**, and the selected stack is now **one click, entirely on Render's free plan**: the root `render.yaml` Blueprint creates the Next.js website, the Django API, PostgreSQL and Redis (Key Value) in one workspace and wires them over Render's private network — no Supabase, Upstash, Vercel or object-storage account. Media is stored in Postgres rows because free instances cannot attach persistent disks. Follow [the one-click guide](deploy/RENDER_ONE_CLICK.md); the earlier [Vercel + Render + Supabase + Upstash variant](deploy/VERCEL_RENDER.md) (with direct upload tickets and private storage redirects) remains documented as an alternative. Local verification is recorded in [HOSTING_VERIFICATION.md](HOSTING_VERIFICATION.md). No live resources have been provisioned, and no paid resources are authorized.
 
 ## Information needed for permanent deployment
 
@@ -41,6 +41,6 @@ The requested budget is **$0**, and the selected stack is **Vercel frontend + Re
 - Free-plan account eligibility and authorized access; any required paid resource needs separate approval.
 - A backend-only Gemini key for real diagnosis, if that feature should be enabled.
 
-The included Compose stack uses persistent PostgreSQL, Redis and private media, plus Caddy HTTPS. The selected Render service exposes the direct bearer-auth Django API and its docs; normal browser calls still use the Vercel BFF. Production admin routes are disabled by default. The alternative private Compose gateway keeps Django admin/docs unexposed.
+The included Compose stack uses persistent PostgreSQL, Redis and private media, plus Caddy HTTPS. In the selected all-Render topology, browsers only talk to the frontend BFF; the Django API is additionally reachable at its own `onrender.com` URL for direct bearer-auth clients and docs. Production admin routes are disabled by default. The alternative private Compose gateway keeps Django admin/docs unexposed.
 
 Permanent URLs should be entered here only after HTTPS, authentication, ownership checks, persistence and health endpoints have been smoke-tested on the selected host. A backup/restore drill and independent operational/security review remain release gates.

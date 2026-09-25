@@ -1,6 +1,8 @@
-# Assignment deployment: Vercel + Render Free
+# Alternative deployment: Vercel + Render Free (+ Supabase + Upstash)
 
-**Selected target:** Vercel frontend, Render Free Django API, Supabase Free PostgreSQL/private storage, Upstash Free Redis. **Budget: $0 hosting. No live accounts/resources have been provisioned by this source package.** Use only free plans; do not enable paid upgrades or usage billing without approval. Check current eligibility/limits in each dashboard before confirming creation.
+> **Superseded as the primary path.** The selected setup is now the [one-click all-Render Blueprint](RENDER_ONE_CLICK.md): website, API, PostgreSQL and Redis all on Render's free plan, with media stored in the database — one provider account instead of four. This guide remains for the split-provider variant (Vercel frontend, Render Free Django API, Supabase Free PostgreSQL/private storage, Upstash Free Redis), whose direct-upload ticket and signed-URL plumbing the app still fully supports.
+
+**Budget: $0 hosting. No live accounts/resources have been provisioned by this source package.** Use only free plans; do not enable paid upgrades or usage billing without approval. Check current eligibility/limits in each dashboard before confirming creation.
 
 ## What is already adapted
 
@@ -9,7 +11,7 @@
 - With `NEXT_PUBLIC_DIRECT_API_URL` set, the browser requests an authenticated **120-second upload-only ticket**, then sends the actual multipart file directly to Render. The ticket binds account, MIME and byte size, is replay-checked in the shared cache, and cannot authenticate another endpoint. JWTs remain inaccessible to browser JavaScript.
 - Django still validates real image/audio/video contents and enforces upload limits. Ticket minting uses the normal user throttle; the actual upload uses the upload throttle. Parsing also bounds total file bytes.
 - With S3-compatible storage configured, the owner-checked media endpoint redirects to a **60-second signed storage URL**. Vercel forwards the redirect, not the large file body. Anyone possessing that signed URL can read it until expiry; do not share/log it. Replay protection for upload tickets depends on retaining their cache entries until expiry.
-- `render.yaml` defines one free Docker web service, not a paid database. `start-render.sh` runs migrations before Gunicorn, with one worker/two threads as a modest starting configuration—not a proven capacity guarantee.
+- The repository's `render.yaml` now defines the **all-Render** one-click stack (see the banner above); for this variant, create the Render service from the same Dockerfile and adjust environment variables as described in step 4. `start-render.sh` runs migrations before Gunicorn, with one worker/two threads as a modest starting configuration—not a proven capacity guarantee.
 - Render uses an external private media bucket, not its ephemeral filesystem. Django admin routes are disabled by default in production. Public API docs remain available.
 
 The transfer design addresses Vercel's 4.5 MB function payload ceiling without reducing the app's 7 MiB image / 15 MiB audio-video limits. Vercel route duration is configured to 90 seconds; its upstream timeout stays 70 seconds. Check the project's current function-duration/Fluid Compute settings. [1](https://vercel.com/docs/functions/limitations)
@@ -55,9 +57,9 @@ Keep the Free plan selected. Its published allowance is 256 MB and 500,000 comma
 
 ## 4. Deploy the backend on Render
 
-Create a **Blueprint** from the repository's `render.yaml`. Confirm the web-service instance is **Free** before applying. The configuration uses `backend/` as its root and its existing Dockerfile, which installs ffmpeg and collects static assets.
+Create a free Docker **Web Service** from this repository with root `backend/` and its existing Dockerfile, which installs ffmpeg and collects static assets, and start command `bash start-render.sh`. (The committed `render.yaml` Blueprint now targets the [all-Render stack](RENDER_ONE_CLICK.md); if you deploy this variant from that Blueprint instead, delete the `pitstop-db`/`pitstop-redis`/`pitstop-web` resources and replace the injected `DATABASE_URL`/`REDIS_URL` with the Supabase/Upstash values below, set `DB_SSLMODE=verify-full`, `PGSSLROOTCERT=/app/certs/supabase-prod-ca-2021.crt`, `DATABASE_SCHEMA=pitstop`, the `AWS_*` storage variables, `CORS_ALLOWED_ORIGINS`, and `TRUST_PRIVATE_NETWORK_HOST=0`, and unset `MEDIA_STORAGE` so S3 storage is selected.)
 
-Supply the fields marked `sync: false` through Render's protected environment settings:
+Supply the following through Render's protected environment settings:
 
 | Variable | Value |
 |---|---|
@@ -77,7 +79,7 @@ Generate the Django secret **on your own machine**, for example:
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-Render's auto-generated Blueprint secret is not used because this app requires a 50+ character secret. The blueprint supplies production mode, private schema, TLS settings, checksum compatibility settings and conservative daily AI attempt budgets. `RENDER_EXTERNAL_HOSTNAME` is automatically added to Django's allowed hosts.
+Render's auto-generated Blueprint secret (`generateValue: true`, a base64-encoded 256-bit value, 44 characters) is stretched at startup by `start-render.sh` into a 128-character SHA-512 hex key, satisfying the app's 50+ character production requirement without weakening entropy; a locally generated 50+ character secret passes through unchanged. The blueprint supplies production mode, TLS settings, checksum compatibility settings and conservative daily AI attempt budgets. `RENDER_EXTERNAL_HOSTNAME` is automatically added to Django's allowed hosts.
 
 If the frontend URL is not assigned yet, use a temporary valid placeholder origin such as `https://frontend-not-configured.invalid` for CORS, then replace it after step 5. Normal BFF login calls are server-to-server; direct browser uploads will remain blocked until the real origin is configured.
 

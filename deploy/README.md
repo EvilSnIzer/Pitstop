@@ -1,6 +1,6 @@
 # Deployment, maintenance and recovery
 
-For the selected job-assignment setup, use [Vercel + Render Free](VERCEL_RENDER.md). This document covers the alternative single-host Compose stack. Its local-volume backup script does not back up hosted Supabase storage.
+For the selected job-assignment setup, use the [one-click all-Render free deployment](RENDER_ONE_CLICK.md) (website, API, Postgres and Redis all on Render; the earlier [Vercel + Render variant](VERCEL_RENDER.md) remains documented as an alternative). This document covers the single-host Compose stack. Its local-volume backup script does not back up hosted Supabase storage.
 
 This is a **single-host** reference deployment, not an HA design or proof of a completed rollout. Container builds and Compose validation are CI jobs; a cloud deployment, load test and restore drill must still be performed. Do not publish the development servers, SQLite database or local test database credentials.
 

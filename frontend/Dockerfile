@@ -1,4 +1,5 @@
 FROM node:24-bookworm-slim AS builder
+ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
