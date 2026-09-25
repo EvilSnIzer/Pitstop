@@ -23,8 +23,10 @@ jobs:
         python-version: ["3.13"]
         database: [sqlite, postgres]
     services:
+      # Matches the major version the Render Blueprint provisions
+      # (render.yaml: postgresMajorVersion "16").
       postgres:
-        image: postgres:17
+        image: postgres:16
         env:
           POSTGRES_USER: pitstop
           POSTGRES_PASSWORD: pitstop

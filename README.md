@@ -181,6 +181,8 @@ PATH="../backend/.venv/bin:$PATH" CI=1 NEXT_PUBLIC_DIRECT_API_URL=http://127.0.0
 
 Without `CI=1`, Playwright expects already-running servers; optional `PREVIEW_URL` changes the frontend URL. Use an empty provider key and a disposable local database. CI raises **only the test server's** auth limit because many accounts share one test IP; never copy that override into production.
 
+**Live-stack smoke test.** With both servers running, `backend/.venv/bin/python scripts/smoke_test.py` (from the repository root) exercises the real HTTP surface with no mocks: registration and cookie attributes, CSRF-header rejection, session creation, upload round-trip, intake completion, idempotent replay, `ai_not_configured`, owner-scoped media, bearer auth, pagination, health and docs endpoints. Point `PITSTOP_FE_URL` / `PITSTOP_API_URL` at any other deployment to smoke-test it; it exits non-zero on the first failed expectation.
+
 The backend suite blocks provider HTTP calls. Browser tests exercise real cookie auth, refresh, private attachments, intake, failure recovery and navigation. The diagnosed-to-booking browser fixture is mocked; backend tests separately enforce the real booking contract with Gemini mocked. See [verification notes](VERIFICATION.md) for results and unverified claims.
 
 ## Deployment and limits

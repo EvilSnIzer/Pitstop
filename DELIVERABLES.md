@@ -50,7 +50,7 @@ available here; the project targets Python 3.13 / Node 24 and CI runs those):
 | `npm run test:proxy` | **11 passed** |
 | `npm run build` (standalone) | Passed — 5 routes, `/api/[...path]` dynamic |
 | `npm audit --omit=dev --audit-level=high` | **0 vulnerabilities** |
-| End-to-end smoke test through the BFF and the direct API | **18/18 checks passed** |
+| End-to-end smoke test through the BFF and the direct API ([`scripts/smoke_test.py`](scripts/smoke_test.py), no mocks) | **18/18 checks passed** |
 
 Smoke test highlights (real HTTP, no mocks): registration returned `201
 {"authenticated":true}` with `pitstop_access`/`pitstop_refresh` cookies carrying
@@ -83,7 +83,7 @@ Two environment limits, stated plainly:
 | Job | Result |
 |---|---|
 | Backend (Python 3.13, SQLite) | **pass** in 2m 5s |
-| Backend (Python 3.13, PostgreSQL 17 + Redis 7) | **pass** in 1m 28s |
+| Backend (Python 3.13, PostgreSQL 16 + Redis 7 — the version the Blueprint provisions) | **pass** in 1m 28s |
 | Frontend (Node 24) — lint, typecheck, proxy tests, standalone build, audit | **pass** in 46s |
 | Browser regressions (Chromium) — 14 specs across `auth.spec.ts` and `workspace.spec.ts` | **pass** in 2m 0s |
 

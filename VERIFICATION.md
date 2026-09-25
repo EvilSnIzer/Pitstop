@@ -4,6 +4,34 @@
 
 **Verified locally: 25 September 2026 (Asia/Calcutta).** This records actual checks performed, not a self-awarded production-readiness score.
 
+## Re-verification on branch `arena/01a0d9ac-pitstop` (25 September 2026)
+
+Run in a clean workspace with Python 3.11.2 and Node 22.22.3 (the newest interpreters
+available there; the project targets Python 3.13 / Node 24, which is what CI runs), SQLite,
+a process-local cache and a static `ffprobe` build on `PATH`.
+
+| Check | Result |
+|---|---|
+| `ruff check .` / `black --check .` | Passed, after Black reformatted `chatbot/bot/gemini.py` (the previous commit left it unformatted) |
+| `manage.py check`, `makemigrations --check --dry-run` | No issues; no migration drift |
+| `spectacular --validate --fail-on-warn` | Passed; export byte-identical to `docs/openapi.yaml` (`diff` exit 0) |
+| `pytest` | **98 passed, 2 skipped** |
+| `pip check` / `pip-audit -r requirements.txt` | Clean / **no known vulnerabilities** |
+| `npm run lint`, `npm run typecheck`, `npm run test:proxy` | Passed / passed / **11 passed** |
+| `npm run build` (standalone) | Passed; `/`, `/login`, `/register` and all 14/13/13 referenced chunks return 200 |
+| `npm audit --omit=dev --audit-level=high` | **0 vulnerabilities** |
+| Remote CI ([`ci.yml`](.github/workflows/ci.yml), commit `c7f9aab`) | Backend SQLite **pass**, backend PostgreSQL 16 + Redis 7 **pass**, frontend **pass**, Chromium browser regressions **pass** |
+| Live stack smoke test ([`scripts/smoke_test.py`](scripts/smoke_test.py)) | **18/18 checks passed** against the running Gunicorn + standalone Next.js servers |
+
+Fixes this run produced: the missing `.github/workflows/ci.yml`; the `APP_ORIGIN` gap that
+made every browser-initiated mutation return `403 csrf_failed` in the documented dev flow
+and in CI; and CI's PostgreSQL service now matches the Blueprint's major version (16).
+
+Still not established here: browser tests cannot run in this workspace (Playwright's
+Chromium download is blocked, so CI covers them), and no container runtime is available
+(`docker` and `podman` are absent), so the Dockerfiles and Compose stack remain unbuilt and
+unexecuted. Everything listed under "Not established by this work" below still stands.
+
 ## Changes delivered
 
 | Area | Implemented improvements |
