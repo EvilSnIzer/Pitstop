@@ -62,9 +62,7 @@ def _strip_sampling_params(config):
     callers keep generous caps. The per-model default thinking level applies.
     """
     if MODEL.startswith("gemini-3"):
-        return config.model_copy(
-            update={"temperature": None, "top_p": None, "top_k": None}
-        )
+        return config.model_copy(update={"temperature": None, "top_p": None, "top_k": None})
     return config
 
 
@@ -86,9 +84,7 @@ def _generate(parts, config=None) -> str:
     client = _client()
     if client is None:
         raise GeminiNotConfiguredError("AI provider key is missing")
-    config = _strip_sampling_params(
-        config or types.GenerateContentConfig(max_output_tokens=1024)
-    )
+    config = _strip_sampling_params(config or types.GenerateContentConfig(max_output_tokens=1024))
     deadline = time.monotonic() + min(40, usage.remaining_seconds())
     for attempt in range(_MAX_RETRIES + 1):
         remaining = min(deadline - time.monotonic(), usage.remaining_seconds())

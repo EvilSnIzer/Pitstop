@@ -2,6 +2,16 @@
 
 A mobile-first car-care workspace with persisted conversations, image/audio/video attachments, deterministic intake, Gemini-assisted diagnosis, and mechanic booking requests. AI guidance is not a safety inspection; confidence is model-generated, not a calibrated probability. A pending booking is **not** a confirmed appointment.
 
+## Live demo (running now, session-scoped)
+
+- **Frontend:** <https://3000-i7d6wocviwvln48i3xhfx.e2b.app> — the standalone production build.
+- **Backend API:** <https://8000-i7d6wocviwvln48i3xhfx.e2b.app> — `/health/live/`, `/health/ready/`, `/api/v1/`, plus Swagger UI at `/api/docs/` and the schema at `/api/schema/`.
+
+These are workspace preview hostnames for the running development session, not permanent
+hosting: they stop answering when the session's sandbox stops. Deliverable status, the
+verification evidence behind them and the permanent-hosting steps are in
+[DELIVERABLES.md](DELIVERABLES.md).
+
 ## Deploy it — one click, all free, all on Render
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/EvilSnIzer/Pitstop)
@@ -10,7 +20,8 @@ The root [`render.yaml`](render.yaml) Blueprint provisions the **website (Next.j
 
 ## Handoff documents
 
-- [Deliverable status and GitHub upload instructions](HANDOFF.md)
+- [Deliverable status, live URLs and verification evidence](DELIVERABLES.md)
+- [Handoff notes and permanent-hosting requirements](HANDOFF.md)
 - [Short architecture explanation](ARCHITECTURE.md)
 - [One-click all-Render free deployment (selected)](deploy/RENDER_ONE_CLICK.md)
 - [Alternative Vercel + Render + Supabase + Upstash deployment](deploy/VERCEL_RENDER.md)
@@ -76,7 +87,7 @@ cp .env.example .env.local
 npm run dev -- --hostname 0.0.0.0
 ```
 
-Open `http://localhost:3000`. `API_PROXY_URL` is server-only, defaulting to `http://127.0.0.1:8000`. The browser always uses relative `/api/v1` URLs. `NEXT_PUBLIC_DIRECT_API_URL` optionally routes only attachment upload bytes directly to the backend using upload-only tickets; it is required for Vercel. `NEXT_PUBLIC_API_URL` and the former `X-Mechanic-Authorization` transport are no longer used.
+Open `http://localhost:3000`. `API_PROXY_URL` is server-only, defaulting to `http://127.0.0.1:8000`. `APP_ORIGIN` (`.env.example` sets `http://localhost:3000`) must exactly match the origin in the address bar: the BFF rejects mutations from any other origin with `403 csrf_failed`, so browsing to `http://127.0.0.1:3000` instead requires updating it. The browser always uses relative `/api/v1` URLs. `NEXT_PUBLIC_DIRECT_API_URL` optionally routes only attachment upload bytes directly to the backend using upload-only tickets; it is required for Vercel. `NEXT_PUBLIC_API_URL` and the former `X-Mechanic-Authorization` transport are no longer used.
 
 For a local production build:
 
@@ -169,6 +180,8 @@ PATH="../backend/.venv/bin:$PATH" CI=1 NEXT_PUBLIC_DIRECT_API_URL=http://127.0.0
 ```
 
 Without `CI=1`, Playwright expects already-running servers; optional `PREVIEW_URL` changes the frontend URL. Use an empty provider key and a disposable local database. CI raises **only the test server's** auth limit because many accounts share one test IP; never copy that override into production.
+
+**Live-stack smoke test.** With both servers running, `backend/.venv/bin/python scripts/smoke_test.py` (from the repository root) exercises the real HTTP surface with no mocks: registration and cookie attributes, CSRF-header rejection, session creation, upload round-trip, intake completion, idempotent replay, `ai_not_configured`, owner-scoped media, bearer auth, pagination, health and docs endpoints. Point `PITSTOP_FE_URL` / `PITSTOP_API_URL` at any other deployment to smoke-test it; it exits non-zero on the first failed expectation.
 
 The backend suite blocks provider HTTP calls. Browser tests exercise real cookie auth, refresh, private attachments, intake, failure recovery and navigation. The diagnosed-to-booking browser fixture is mocked; backend tests separately enforce the real booking contract with Gemini mocked. See [verification notes](VERIFICATION.md) for results and unverified claims.
 
