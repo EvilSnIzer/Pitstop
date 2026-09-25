@@ -87,7 +87,7 @@ cp .env.example .env.local
 npm run dev -- --hostname 0.0.0.0
 ```
 
-Open `http://localhost:3000`. `API_PROXY_URL` is server-only, defaulting to `http://127.0.0.1:8000`. The browser always uses relative `/api/v1` URLs. `NEXT_PUBLIC_DIRECT_API_URL` optionally routes only attachment upload bytes directly to the backend using upload-only tickets; it is required for Vercel. `NEXT_PUBLIC_API_URL` and the former `X-Mechanic-Authorization` transport are no longer used.
+Open `http://localhost:3000`. `API_PROXY_URL` is server-only, defaulting to `http://127.0.0.1:8000`. `APP_ORIGIN` (`.env.example` sets `http://localhost:3000`) must exactly match the origin in the address bar: the BFF rejects mutations from any other origin with `403 csrf_failed`, so browsing to `http://127.0.0.1:3000` instead requires updating it. The browser always uses relative `/api/v1` URLs. `NEXT_PUBLIC_DIRECT_API_URL` optionally routes only attachment upload bytes directly to the backend using upload-only tickets; it is required for Vercel. `NEXT_PUBLIC_API_URL` and the former `X-Mechanic-Authorization` transport are no longer used.
 
 For a local production build:
 
