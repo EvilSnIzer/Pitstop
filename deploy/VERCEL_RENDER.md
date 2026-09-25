@@ -37,7 +37,7 @@ Keep `pitstop` **out of the Data API's exposed schemas**. The Render blueprint s
 
 From **Connect**, copy the PostgreSQL **session-pooler** connection URI (not the HTTP Data API URL). Use session mode, normally port 5432—not the transaction pooler. Put it in Render's `DATABASE_URL`. URL-encode special characters in the password. The database account must be able to create tables in the new schema.
 
-The blueprint uses `DB_SSLMODE=verify-full` and `PGSSLROOTCERT=system` with the image's CA certificates. If the selected endpoint requires a project-specific CA, install/provide the correct CA and configure libpq's certificate path; do **not** disable certificate verification to make deployment pass. A real connection must be tested during startup.
+The blueprint uses `DB_SSLMODE=verify-full` with `PGSSLROOTCERT=/app/certs/supabase-prod-ca-2021.crt`. Supabase signs its database and pooler certificates with its own **Supabase Root 2021 CA**, which is not in the system trust store, so `PGSSLROOTCERT=system` would fail verification. The image therefore ships that public root (`backend/certs/`, the same file as **Database Settings → SSL Configuration → Download certificate**; SHA-256 fingerprint `80:70:25:AD:50:D4:ED:21:9D:2C:9C:7D:29:9C:00:4F:82:4E:B0:0C:F7:F6:5A:FE:F6:07:D0:7B:72:E6:CA:FA`). For a provider with publicly trusted certificates, set `PGSSLROOTCERT=system` instead. Do **not** disable certificate verification to make deployment pass. A real connection must be tested during startup.
 
 ### Storage
 
@@ -111,7 +111,7 @@ Set these variables for the **Production** environment:
 | `APP_ORIGIN` | Exact final Vercel frontend origin, e.g. the assigned `https://…vercel.app` |
 | `COOKIE_SECURE` | `1` |
 
-The build intentionally fails if the three URL variables are missing. If your Vercel hostname is only assigned after creating the project, obtain it from **Settings → Domains**, fill the values, then redeploy. Do not disable Origin validation or use a wildcard. Avoid custom domains for this $0 handoff unless you already own one.
+The build intentionally fails if the three URL variables are missing or are not bare `https://` origins (a trailing slash or a path such as `/api/v1` is rejected). The error names each offending variable and the Vercel environment the build ran for; variables are scoped per environment, so a Preview build does not see Production-only values. Changing a variable does not affect existing deployments—redeploy afterwards. If your Vercel hostname is only assigned after creating the project, obtain it from **Settings → Domains**, fill the values, then redeploy. Do not disable Origin validation or use a wildcard. Avoid custom domains for this $0 handoff unless you already own one.
 
 Do not put Django, Gemini, database, Redis or S3 secrets in Vercel's `NEXT_PUBLIC_*` variables. Do not distribute production credentials to arbitrary preview deployments: each permitted preview needs its own deliberate origin/cross-origin configuration. Use the stable production URL for reviewers.
 

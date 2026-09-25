@@ -1,12 +1,38 @@
-if (
-  process.env.VERCEL &&
-  (!process.env.API_PROXY_URL ||
-    !process.env.APP_ORIGIN ||
-    !process.env.NEXT_PUBLIC_DIRECT_API_URL)
-) {
-  throw new Error(
-    "Vercel requires API_PROXY_URL, APP_ORIGIN and NEXT_PUBLIC_DIRECT_API_URL.",
+// Vercel builds need these up front: NEXT_PUBLIC_DIRECT_API_URL is inlined into
+// the browser bundle and the /api proxy uses the other two. Each must be a bare
+// origin: a trailing slash or a path like /api/v1 would build fine but then
+// break every proxied call or Origin check. See deploy/VERCEL_RENDER.md, step 5.
+if (process.env.VERCEL) {
+  const required = ["API_PROXY_URL", "APP_ORIGIN", "NEXT_PUBLIC_DIRECT_API_URL"];
+  const isOrigin = (value) => {
+    try {
+      const url = new URL(value);
+      const loopback = ["localhost", "127.0.0.1"].includes(url.hostname);
+      return (
+        url.origin === value &&
+        (url.protocol === "https:" || (loopback && url.protocol === "http:"))
+      );
+    } catch {
+      return false;
+    }
+  };
+  const missing = required.filter((name) => !process.env[name]);
+  const malformed = required.filter(
+    (name) => process.env[name] && !isOrigin(process.env[name]),
   );
+  if (missing.length || malformed.length) {
+    throw new Error(
+      [
+        "Vercel requires API_PROXY_URL, APP_ORIGIN and NEXT_PUBLIC_DIRECT_API_URL.",
+        missing.length && `  Missing: ${missing.join(", ")}`,
+        malformed.length &&
+          `  Not a bare https origin like https://example.com (no path or trailing slash): ${malformed.join(", ")}`,
+        `Set them in Vercel > Project Settings > Environment Variables for the "${process.env.VERCEL_ENV ?? "current"}" environment, then redeploy.`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    );
+  }
 }
 
 /** @type {import('next').NextConfig} */
