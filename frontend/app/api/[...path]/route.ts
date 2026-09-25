@@ -50,6 +50,8 @@ async function proxy(
     // On Render the browser origin is this service's own public URL, which
     // Render injects at runtime as RENDER_EXTERNAL_HOSTNAME — no build-time
     // knowledge of the hostname needed. APP_ORIGIN still wins (custom domains).
+    // On Vercel, branch/preview URLs (like pitstop-git-main-....vercel.app) or
+    // system URLs are supported automatically.
     const expected =
       process.env.APP_ORIGIN ??
       (process.env.RENDER_EXTERNAL_HOSTNAME
@@ -59,14 +61,21 @@ async function proxy(
           : process.env.VERCEL_URL
             ? `https://${process.env.VERCEL_URL}`
             : undefined);
-    if (expected && origin !== expected)
-      return problem("Origin not allowed.", 403, "csrf_failed");
+
     if (process.env.APP_ENV === "production" && !expected)
       return problem(
         "App origin is not configured.",
         503,
         "app_configuration_error",
       );
+
+    const isAllowed =
+      (expected && origin === expected) ||
+      (origin && process.env.VERCEL && /^https:\/\/[a-z0-9-]+-evilsnizers-projects\.vercel\.app$/.test(origin)) ||
+      (origin && process.env.VERCEL && /^https:\/\/pitstop[a-z0-9-]*\.vercel\.app$/.test(origin));
+
+    if (origin && !isAllowed)
+      return problem("Origin not allowed.", 403, "csrf_failed");
   }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 70000);
