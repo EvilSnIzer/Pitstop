@@ -2,6 +2,16 @@
 
 A mobile-first car-care workspace with persisted conversations, image/audio/video attachments, deterministic intake, Gemini-assisted diagnosis, and mechanic booking requests. AI guidance is not a safety inspection; confidence is model-generated, not a calibrated probability. A pending booking is **not** a confirmed appointment.
 
+## Live demo (running now, session-scoped)
+
+- **Frontend:** <https://3000-i7d6wocviwvln48i3xhfx.e2b.app> — the standalone production build.
+- **Backend API:** <https://8000-i7d6wocviwvln48i3xhfx.e2b.app> — `/health/live/`, `/health/ready/`, `/api/v1/`, plus Swagger UI at `/api/docs/` and the schema at `/api/schema/`.
+
+These are workspace preview hostnames for the running development session, not permanent
+hosting: they stop answering when the session's sandbox stops. Deliverable status, the
+verification evidence behind them and the permanent-hosting steps are in
+[DELIVERABLES.md](DELIVERABLES.md).
+
 ## Deploy it — one click, all free, all on Render
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/EvilSnIzer/Pitstop)
@@ -10,7 +20,8 @@ The root [`render.yaml`](render.yaml) Blueprint provisions the **website (Next.j
 
 ## Handoff documents
 
-- [Deliverable status and GitHub upload instructions](HANDOFF.md)
+- [Deliverable status, live URLs and verification evidence](DELIVERABLES.md)
+- [Handoff notes and permanent-hosting requirements](HANDOFF.md)
 - [Short architecture explanation](ARCHITECTURE.md)
 - [One-click all-Render free deployment (selected)](deploy/RENDER_ONE_CLICK.md)
 - [Alternative Vercel + Render + Supabase + Upstash deployment](deploy/VERCEL_RENDER.md)

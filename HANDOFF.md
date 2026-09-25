@@ -1,46 +1,62 @@
-# Pitstop deliverables
+# Pitstop handoff
 
-## Delivery status
+Deliverable status, live URLs and verification evidence live in
+**[DELIVERABLES.md](DELIVERABLES.md)** — that file is the single place to keep current.
 
-| Requested deliverable | Status / location |
+Summary:
+
+| Deliverable | Status |
 |---|---|
-| GitHub repository | **Source package ready; not published.** The selected handoff is downloadable source first. Upload instructions are below. |
-| Permanent live frontend URL | **Pending hosting target, deployment access and rollout.** No permanent URL has been created or verified. |
-| Permanent live backend API URL | **Pending hosting/routing configuration and rollout.** Do not substitute a localhost URL or temporary workspace preview. |
+| GitHub repository | Published: <https://github.com/EvilSnIzer/Pitstop> (public, default branch `main`) |
+| Live frontend URL | Running session preview — see [DELIVERABLES.md](DELIVERABLES.md); permanent host pending |
+| Live backend API URL | Running session preview — see [DELIVERABLES.md](DELIVERABLES.md); permanent host pending |
 | README with setup instructions | [README.md](README.md) |
-| API documentation | [API reference](docs/API_REFERENCE.md), [OpenAPI schema](docs/openapi.yaml), and Django's local `/api/docs/` Swagger UI |
+| API documentation | [docs/API_REFERENCE.md](docs/API_REFERENCE.md), [docs/openapi.yaml](docs/openapi.yaml), live `/api/docs/` |
 | Short architecture explanation | [ARCHITECTURE.md](ARCHITECTURE.md) |
 
-Also included: [deployment/recovery runbook](deploy/README.md), [prior verification results and limitations](VERIFICATION.md), migrations, automated tests and CI configuration.
+Also included: [deployment/recovery runbook](deploy/README.md),
+[verification results and limitations](VERIFICATION.md),
+[hosting adaptation notes](HOSTING_VERIFICATION.md), migrations, automated tests and
+[CI](.github/workflows/ci.yml).
 
-## Publish the downloaded source to GitHub
+## Working with the published repository
 
-The archive includes source, dependency manifests/locks, example environment files and documentation. It deliberately excludes Git history, installed dependencies, local databases, uploaded user media, build output and real environment/credential files. Install dependencies and build using the README.
-
-Create an empty GitHub repository with your chosen owner/name and visibility. Then, inside the extracted project folder:
+`main` holds the released state. Do work on a branch and open a pull request so CI
+(`backend`, `frontend`, `e2e` jobs) runs before merging:
 
 ```bash
-git init -b main
-git add .
-git commit -m "Initial Pitstop application and documentation"
-git remote add origin https://github.com/YOUR_OWNER/YOUR_REPOSITORY.git
-git push -u origin main
+git switch -c my-change
+git add -A && git commit -m "Describe the change"
+git push -u origin my-change
+gh pr create --fill
 ```
 
-Replace `YOUR_OWNER/YOUR_REPOSITORY` with the actual repository. Configure Git author identity if necessary, and authenticate using your own GitHub credential manager or `gh auth login`. Do not put a token in the remote URL or commit it to the repository. The commands are instructions, not evidence that a repository has already been created.
+Authenticate with your own credential helper or `gh auth login`; never put a token in the
+remote URL or commit credentials.
 
-## Hosting choice
+## Information needed for permanent hosting
 
-The requested budget is **$0**, and the selected stack is now **one click, entirely on Render's free plan**: the root `render.yaml` Blueprint creates the Next.js website, the Django API, PostgreSQL and Redis (Key Value) in one workspace and wires them over Render's private network — no Supabase, Upstash, Vercel or object-storage account. Media is stored in Postgres rows because free instances cannot attach persistent disks. Follow [the one-click guide](deploy/RENDER_ONE_CLICK.md); the earlier [Vercel + Render + Supabase + Upstash variant](deploy/VERCEL_RENDER.md) (with direct upload tickets and private storage redirects) remains documented as an alternative. Local verification is recorded in [HOSTING_VERIFICATION.md](HOSTING_VERIFICATION.md). No live resources have been provisioned, and no paid resources are authorized.
+The requested budget is **$0**, and the selected stack is one click, entirely on Render's
+free plan: the root [`render.yaml`](render.yaml) Blueprint creates the Next.js website, the
+Django API, PostgreSQL and Redis (Key Value) in one workspace, wired over the private
+network — no Supabase, Upstash, Vercel or object-storage account. Media is stored in
+Postgres rows because free instances cannot attach persistent disks. Follow
+[deploy/RENDER_ONE_CLICK.md](deploy/RENDER_ONE_CLICK.md); the earlier
+[Vercel + Render + Supabase + Upstash variant](deploy/VERCEL_RENDER.md) (direct upload
+tickets, signed media redirects) remains documented as an alternative.
 
-## Information needed for permanent deployment
+To finish a permanent rollout you need:
 
-- Target hosting provider/account or an existing Docker-capable server.
-- Authorized deployment access through a secure mechanism; do not paste private keys or cloud secrets into chat.
-- Hostname/domain ownership or an acceptable provider-supplied hostname.
-- Free-plan account eligibility and authorized access; any required paid resource needs separate approval.
-- A backend-only Gemini key for real diagnosis, if that feature should be enabled.
+- Target hosting provider/account, or an existing Docker-capable server.
+- Authorized deployment access through a secure mechanism; do not paste private keys or
+  cloud secrets into chat.
+- Hostname/domain ownership, or acceptance of a provider-supplied hostname.
+- Free-plan account eligibility; any paid resource needs separate approval.
+- A backend-only Gemini key if real diagnosis should be enabled.
 
-The included Compose stack uses persistent PostgreSQL, Redis and private media, plus Caddy HTTPS. In the selected all-Render topology, browsers only talk to the frontend BFF; the Django API is additionally reachable at its own `onrender.com` URL for direct bearer-auth clients and docs. Production admin routes are disabled by default. The alternative private Compose gateway keeps Django admin/docs unexposed.
-
-Permanent URLs should be entered here only after HTTPS, authentication, ownership checks, persistence and health endpoints have been smoke-tested on the selected host. A backup/restore drill and independent operational/security review remain release gates.
+In the all-Render topology, browsers only talk to the frontend BFF; Django is additionally
+reachable at its own `onrender.com` URL for bearer-auth clients and docs, with production
+admin routes disabled. Record the permanent URLs in
+[DELIVERABLES.md](DELIVERABLES.md) only after HTTPS, authentication, ownership checks,
+persistence and the health endpoints have been smoke-tested on that host. A backup/restore
+drill and independent operational/security review remain release gates.

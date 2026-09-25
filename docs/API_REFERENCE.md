@@ -7,7 +7,8 @@
 - **Runtime schema:** `http://localhost:8000/api/schema/`.
 - **Direct local API base:** `http://localhost:8000/api/v1`.
 - **Browser-facing local proxy:** `http://localhost:3000/api/v1`.
-- **Permanent public API URL:** not deployed yet. Local URLs and temporary workspace previews are not permanent hosting.
+- **Live session preview API base:** `https://8000-i7d6wocviwvln48i3xhfx.e2b.app/api/v1`, with docs at `/api/docs/` and schema at `/api/schema/`. This is a workspace preview tied to a working session, not permanent hosting; it stops answering when the session ends.
+- **Permanent public API URL:** not provisioned yet — no cloud account or credential was available. [DELIVERABLES.md](../DELIVERABLES.md) records the one-click Render path and where to enter the resulting hostname.
 
 The reference production gateway currently keeps Django's docs/admin private and sends application API traffic through the Next.js BFF. Publishing a separate bearer-auth API hostname requires configuring the gateway and allowed hosts as part of deployment; do not expose Gunicorn directly. The media endpoint supports a local binary response or an owner-authorized 302 redirect to an expiring private-storage read URL. The selected Render deployment publishes Django docs directly; its production admin routes are disabled.
 
