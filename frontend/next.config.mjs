@@ -3,6 +3,15 @@
 // origin: a trailing slash or a path like /api/v1 would build fine but then
 // break every proxied call or Origin check. See deploy/VERCEL_RENDER.md, step 5.
 if (process.env.VERCEL) {
+  // If APP_ORIGIN is not provided, fall back to Vercel's automatically injected URL
+  if (!process.env.APP_ORIGIN) {
+    const vercelHost =
+      process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+    if (vercelHost) {
+      process.env.APP_ORIGIN = `https://${vercelHost.replace(/^https?:\/\//, "")}`;
+    }
+  }
+
   const required = ["API_PROXY_URL", "APP_ORIGIN", "NEXT_PUBLIC_DIRECT_API_URL"];
   const isOrigin = (value) => {
     try {
