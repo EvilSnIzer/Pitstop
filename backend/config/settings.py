@@ -28,6 +28,15 @@ ALLOWED_HOSTS = [
 if os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
     ALLOWED_HOSTS.append(os.environ["RENDER_EXTERNAL_HOSTNAME"])
 
+# Render's private network resolves services by a single-label internal
+# hostname (<service-name>-<hash>) that no browser can resolve, so such a
+# Host header can only come from a service in the same workspace/region —
+# e.g. the Next.js BFF proxying to this API. When enabled, the middleware
+# below rewrites those hosts to the public hostname instead of widening
+# ALLOWED_HOSTS. See config/middleware.py.
+TRUST_PRIVATE_NETWORK_HOST = os.environ.get("TRUST_PRIVATE_NETWORK_HOST", "0") == "1"
+CANONICAL_HOST = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -45,6 +54,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "config.middleware.PrivateNetworkHostMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "chatbot.errors.RequestLogMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -140,15 +150,34 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", str(BASE_DIR / "media")))
 DATA_UPLOAD_MAX_MEMORY_SIZE = 18 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
-if PRODUCTION and os.environ.get("RENDER") and not os.environ.get("AWS_STORAGE_BUCKET_NAME"):
-    raise ImproperlyConfigured("Render requires persistent object storage for uploaded media")
+
+AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", "")
+# Media backend selection:
+#   filesystem — local disk (development, or a single host with a persistent disk)
+#   database   — Postgres rows via chatbot.storage.DatabaseStorage; what the
+#                all-Render free blueprint uses, because free instances have an
+#                ephemeral disk and cannot attach persistent disks
+#   s3         — any S3-compatible object storage (requires AWS_STORAGE_BUCKET_NAME)
+MEDIA_STORAGE = os.environ.get("MEDIA_STORAGE", "").strip().lower()
+if not MEDIA_STORAGE:
+    MEDIA_STORAGE = "s3" if AWS_STORAGE_BUCKET_NAME else "filesystem"
+if MEDIA_STORAGE not in ("filesystem", "database", "s3"):
+    raise ImproperlyConfigured("MEDIA_STORAGE must be one of filesystem, database, s3")
+if MEDIA_STORAGE == "s3" and not AWS_STORAGE_BUCKET_NAME:
+    raise ImproperlyConfigured("MEDIA_STORAGE=s3 requires AWS_STORAGE_BUCKET_NAME")
+if PRODUCTION and os.environ.get("RENDER") and MEDIA_STORAGE == "filesystem":
+    raise ImproperlyConfigured(
+        "Render's filesystem is ephemeral and free instances cannot attach disks; "
+        "set MEDIA_STORAGE=database or configure S3-compatible object storage"
+    )
 
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
 }
-AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", "")
-if AWS_STORAGE_BUCKET_NAME:
+if MEDIA_STORAGE == "database":
+    STORAGES["default"] = {"BACKEND": "chatbot.storage.DatabaseStorage"}
+elif MEDIA_STORAGE == "s3":
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3.S3Storage",
         "OPTIONS": {

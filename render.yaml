@@ -1,10 +1,54 @@
+# Pitstop — one-click, all-free Render Blueprint.
+#
+#   Deploy: https://render.com/deploy?repo=https://github.com/EvilSnIzer/Pitstop
+#   Guide:  deploy/RENDER_ONE_CLICK.md
+#
+# Creates four free-plan resources in one workspace region and wires them
+# together over Render's private network — no Supabase, Upstash, Vercel,
+# S3 bucket or any other external account is required:
+#
+#   pitstop-web    Next.js frontend + same-origin cookie BFF (Docker, free)
+#   pitstop-api    Django REST API (Docker, free)
+#   pitstop-db     Render Postgres (free; expires 30 days after creation)
+#   pitstop-redis  Render Key Value / Valkey (free; 25 MB, no persistence)
+#
+# Uploaded media is stored as rows in pitstop-db (MEDIA_STORAGE=database)
+# because free Render web services have an ephemeral filesystem and cannot
+# attach persistent disks.
+#
+# The only value Render may prompt for is the optional GEMINI_API_KEY on
+# pitstop-api; leave it empty and the app runs with deterministic intake
+# (AI diagnosis then reports ai_not_configured). DJANGO_SECRET_KEY is
+# generated automatically.
+
+databases:
+  - name: pitstop-db
+    databaseName: pitstop
+    user: pitstop
+    plan: free
+    postgresMajorVersion: "16"
+    # Private-network access only; enable an entry here (or in the dashboard)
+    # temporarily if you need external psql/pg_dump access for backups.
+    ipAllowList: []
+
 services:
+  - type: keyvalue
+    name: pitstop-redis
+    plan: free
+    # Throttle counters and idempotency replay flags are short-lived; losing
+    # them on eviction/restart is acceptable, so noeviction is not needed.
+    maxmemoryPolicy: allkeys-lru
+    persistenceMode: off
+    ipAllowList: [] # private-network access only
+
   - type: web
     name: pitstop-api
     runtime: docker
     plan: free
     rootDir: backend
     dockerfilePath: ./Dockerfile
+    # start-render.sh applies migrations before Gunicorn starts (free plan
+    # has no pre-deploy command support).
     dockerCommand: bash start-render.sh
     healthCheckPath: /health/live/
     envVars:
@@ -12,38 +56,30 @@ services:
         value: production
       - key: DJANGO_DEBUG
         value: "0"
+      # 44-char base64 (256-bit) generated secret; start-render.sh stretches
+      # it to a 128-char SHA-512 hex key so Django's deploy checks stay happy.
       - key: DJANGO_SECRET_KEY
-        sync: false
+        generateValue: true
       - key: DATABASE_URL
-        sync: false
-      - key: DATABASE_SCHEMA
-        value: pitstop
-      - key: DB_SSLMODE
-        value: verify-full
-      # Supabase signs its Postgres/pooler certificates with its own root CA,
-      # which is not in the system trust store. Its public root ships in the
-      # image (backend/certs; SHA-256 80:70:25:AD:...:72:E6:CA:FA). Use
-      # "system" instead for a provider with publicly trusted certificates.
-      - key: PGSSLROOTCERT
-        value: /app/certs/supabase-prod-ca-2021.crt
+        fromDatabase:
+          name: pitstop-db
+          property: connectionString
       - key: REDIS_URL
-        sync: false
-      - key: AWS_STORAGE_BUCKET_NAME
-        sync: false
-      - key: AWS_S3_ENDPOINT_URL
-        sync: false
-      - key: AWS_S3_REGION_NAME
-        sync: false
-      - key: AWS_ACCESS_KEY_ID
-        sync: false
-      - key: AWS_SECRET_ACCESS_KEY
-        sync: false
-      - key: AWS_REQUEST_CHECKSUM_CALCULATION
-        value: when_required
-      - key: AWS_RESPONSE_CHECKSUM_VALIDATION
-        value: when_required
-      - key: CORS_ALLOWED_ORIGINS
-        sync: false
+        fromService:
+          type: keyvalue
+          name: pitstop-redis
+          property: connectionString
+      # Free Render instances have an ephemeral disk: keep private media in
+      # Postgres (chatbot.storage.DatabaseStorage) instead of the filesystem.
+      - key: MEDIA_STORAGE
+        value: database
+      # The BFF reaches this API through Render's private network, where the
+      # Host header is the single-label internal hostname (<name>-<hash>).
+      # The middleware rewrites it to this service's public hostname.
+      - key: TRUST_PRIVATE_NETWORK_HOST
+        value: "1"
+      # Optional. Empty => deterministic intake; diagnosis returns
+      # ai_not_configured instead of inventing an answer.
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
@@ -52,3 +88,25 @@ services:
         value: "20"
       - key: AI_GLOBAL_DAILY_CALLS
         value: "100"
+
+  - type: web
+    name: pitstop-web
+    runtime: docker
+    plan: free
+    rootDir: frontend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /login
+    envVars:
+      - key: APP_ENV
+        value: production
+      # Resolved to the API's private-network address, e.g. pitstop-api-ab12:10000
+      - key: API_HOSTPORT
+        fromService:
+          type: web
+          name: pitstop-api
+          property: hostport
+      - key: API_PROXY_URL
+        value: http://$(API_HOSTPORT)
+      # APP_ORIGIN needs no value: the BFF falls back to this service's own
+      # RENDER_EXTERNAL_HOSTNAME, which Render injects at runtime. Attach a
+      # custom domain and set APP_ORIGIN explicitly to match it.

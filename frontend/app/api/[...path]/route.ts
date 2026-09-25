@@ -47,7 +47,14 @@ async function proxy(
     if (request.headers.get("X-Pitstop-Request") !== "1")
       return problem("Request verification failed.", 403, "csrf_failed");
     const origin = request.headers.get("origin");
-    const expected = process.env.APP_ORIGIN;
+    // On Render the browser origin is this service's own public URL, which
+    // Render injects at runtime as RENDER_EXTERNAL_HOSTNAME — no build-time
+    // knowledge of the hostname needed. APP_ORIGIN still wins (custom domains).
+    const expected =
+      process.env.APP_ORIGIN ??
+      (process.env.RENDER_EXTERNAL_HOSTNAME
+        ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}`
+        : undefined);
     if (expected && origin !== expected)
       return problem("Origin not allowed.", 403, "csrf_failed");
     if (process.env.APP_ENV === "production" && !expected)

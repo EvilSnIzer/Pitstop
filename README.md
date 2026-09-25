@@ -2,11 +2,18 @@
 
 A mobile-first car-care workspace with persisted conversations, image/audio/video attachments, deterministic intake, Gemini-assisted diagnosis, and mechanic booking requests. AI guidance is not a safety inspection; confidence is model-generated, not a calibrated probability. A pending booking is **not** a confirmed appointment.
 
+## Deploy it — one click, all free, all on Render
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/EvilSnIzer/Pitstop)
+
+The root [`render.yaml`](render.yaml) Blueprint provisions the **website (Next.js), API (Django), PostgreSQL and Redis (Key Value) on Render's free plan** and wires them over Render's private network — no Supabase, Upstash, Vercel, S3 or second provider account. Uploaded media is stored in Postgres (`MEDIA_STORAGE=database`) because free instances have ephemeral disks; the Django secret is generated automatically; the only optional prompt is a Gemini key (leave it empty and intake still works deterministically). Full walkthrough, smoke test and free-plan limits (spin-down after 15 idle minutes, free Postgres expires after 30 days): **[deploy/RENDER_ONE_CLICK.md](deploy/RENDER_ONE_CLICK.md)**.
+
 ## Handoff documents
 
 - [Deliverable status and GitHub upload instructions](HANDOFF.md)
 - [Short architecture explanation](ARCHITECTURE.md)
-- [Selected Vercel + Render assignment deployment](deploy/VERCEL_RENDER.md)
+- [One-click all-Render free deployment (selected)](deploy/RENDER_ONE_CLICK.md)
+- [Alternative Vercel + Render + Supabase + Upstash deployment](deploy/VERCEL_RENDER.md)
 - [API reference](docs/API_REFERENCE.md) and [OpenAPI schema](docs/openapi.yaml)
 
 ## Architecture
@@ -16,15 +23,16 @@ One monorepo, two independently runnable applications: API contracts, migrations
 ```text
 Browser → Next.js App Router + same-origin cookie BFF → Django REST API
                                                         ├─ PostgreSQL: application state + AI budgets
+                                                        │              (+ uploaded media rows on Render free)
                                                         ├─ Redis: shared rate-limit counters
-                                                        ├─ private disk volume / S3: attachments
+                                                        ├─ private disk volume / S3: attachments (alternatives)
                                                         └─ Gemini: classification, media, diagnosis
 ```
 
 - **Frontend:** Next.js 16.3.6, React 19, TypeScript, Tailwind, TanStack Query; Node 24 LTS. The original Next 14 constraint was explicitly lifted to address dependency advisories.
 - **Backend:** Django 5.2, DRF, SimpleJWT, drf-spectacular; Python 3.13, Pillow and ffprobe.
 - **Development:** SQLite and in-process cache work without infrastructure. They do **not** provide the production concurrency/rate-limit guarantees.
-- **Selected assignment hosting:** Vercel frontend + Render Free backend, using external PostgreSQL, Redis and private object storage. See [the deployment guide](deploy/VERCEL_RENDER.md). Configuration and local transfer tests are complete; hosted rollout is still pending account access.
+- **Selected assignment hosting:** one Blueprint, everything on Render's free plan — Next.js frontend/BFF, Django API, Postgres and Key Value (Redis), wired over Render's private network, with media stored in Postgres. See [the one-click guide](deploy/RENDER_ONE_CLICK.md). The split [Vercel + Render + Supabase + Upstash variant](deploy/VERCEL_RENDER.md) remains supported (direct-upload tickets, signed media redirects). Local verification is complete; a hosted rollout on your own account is still pending.
 - **Alternative self-hosting:** `deploy/` provides a single-host Docker Compose stack with PostgreSQL, Redis, Gunicorn, standalone Next.js and Caddy TLS. It is deployment configuration, not evidence of a live cloud deployment.
 
 ```text
@@ -83,7 +91,7 @@ The build stages static/public assets into the standalone server directory. `npm
 
 - The browser receives **HttpOnly**, host-only cookies scoped to `/api`, never JWT JSON or localStorage tokens. Access lasts 15 minutes; refresh tokens last 7 days.
 - The BFF refreshes expired access once per request. Temporary refresh failure returns 503 without discarding credentials. Invalid refresh clears cookies. Logout clears cookies after server-side refresh revocation; a failed attempt preserves credentials for retry, and an already-issued access token remains valid until expiry.
-- Production requires HTTPS, secure SameSite=Lax cookies and an exact `APP_ORIGIN`. Every mutation requires `X-Pitstop-Request: 1`; production also checks Origin. The BFF does not enable cross-origin credentialed calls. HTTPS development iframe previews use partitioned SameSite=None cookies.
+- Production requires HTTPS, secure SameSite=Lax cookies and an exact `APP_ORIGIN`; on Render the BFF falls back to the service's own injected `RENDER_EXTERNAL_HOSTNAME`, so no origin has to be known at build time. Every mutation requires `X-Pitstop-Request: 1`; production also checks Origin. The BFF does not enable cross-origin credentialed calls. HTTPS development iframe previews use partitioned SameSite=None cookies.
 - Registration applies Django password validators and canonical, database-unique email identity. Login is case-insensitive. Auth endpoints have their own throttle.
 - Sessions, history, bookings and attachments are owner-scoped. Permanent/public storage URLs are never returned. When object storage is configured, an owner-checked media request redirects to a signed URL valid for 60 seconds; possession of that URL grants temporary read access. Neither `/media/` nor the local storage volume is publicly served.
 - Only the trusted gateway may reach the frontend/backend containers. It overwrites the client-IP header. Exposing them directly would invalidate the proxy trust assumptions.
@@ -166,8 +174,8 @@ The backend suite blocks provider HTTP calls. Browser tests exercise real cookie
 
 ## Deployment and limits
 
-For the selected free assignment stack, follow [Vercel + Render](deploy/VERCEL_RENDER.md). For a private Docker host, follow [the deployment and recovery runbook](deploy/README.md). There is no free-tier assumption: compute, persistent PostgreSQL, Redis, media capacity, backups and Gemini can all cost money. A BFF carries upload bodies and waits for AI, so serverless body-size/execution limits must be checked before moving it to Vercel or another function host.
+For the selected free assignment stack, follow the [one-click all-Render guide](deploy/RENDER_ONE_CLICK.md); the split-provider [Vercel + Render variant](deploy/VERCEL_RENDER.md) and the [single-host runbook](deploy/README.md) remain documented. "Free" still has hard limits: Render free services spin down after 15 idle minutes (~1 min cold start), the free Postgres instance expires 30 days after creation, workspaces get 750 free instance-hours per month (two always-warm web services would exceed that — do not ping them), and Gemini can cost money beyond its free allowance. A BFF carries upload bodies and waits for AI, so serverless body-size/execution limits must be checked before moving it to Vercel or another function host.
 
-SQLite is a single-writer development option; changing `DATABASE_URL` creates/uses a different database and does **not** move existing data. Production settings reject SQLite and process-local cache. Local media volumes suit one host; multiple application hosts need private shared storage such as S3. Enabling S3 does not migrate existing files.
+SQLite is a single-writer development option; changing `DATABASE_URL` creates/uses a different database and does **not** move existing data. Production settings reject SQLite and process-local cache. Media storage is selectable: `filesystem` (one host with a persistent disk), `database` (Postgres rows via `MEDIA_STORAGE=database` — the Render free-plan default, since free instances cannot attach disks) or `s3` (any S3-compatible private bucket, required when `AWS_STORAGE_BUCKET_NAME` is set; production on Render refuses `filesystem`). Multiple application hosts need `database` or S3. Switching backends does not migrate existing files.
 
 Outstanding release evidence includes container-host rollout, restore drill, load/soak tests, independent security/accessibility review and live Gemini accuracy/safety evaluation. Booking is an internal request record; there is no mechanic dispatch/calendar integration, password recovery or email verification workflow. These are not silently simulated. The Pitstop identity is a presentation brand; `frontend/public/garage.jpg` is AI-generated artwork.
