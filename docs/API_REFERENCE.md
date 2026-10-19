@@ -7,8 +7,8 @@
 - **Runtime schema:** `http://localhost:8000/api/schema/`.
 - **Direct local API base:** `http://localhost:8000/api/v1`.
 - **Browser-facing local proxy:** `http://localhost:3000/api/v1`.
-- **Live session preview API base:** `https://8000-i7d6wocviwvln48i3xhfx.e2b.app/api/v1`, with docs at `/api/docs/` and schema at `/api/schema/`. This is a workspace preview tied to a working session, not permanent hosting; it stops answering when the session ends.
-- **Permanent public API URL:** not provisioned yet — no cloud account or credential was available. [DELIVERABLES.md](../DELIVERABLES.md) records the one-click Render path and where to enter the resulting hostname.
+- **Live API base (production):** `https://pitstop-pi-ochre.vercel.app/api/v1` — same-origin through the BFF, cookie-authenticated. Verified live on 25 September 2026: `GET /api/v1/auth/me` returns Django's `401 not_authenticated` with a `request_id`, so the BFF is reaching a live API process.
+- **Direct Django API base:** the Django service's own public hostname carries bearer auth, `/api/docs/`, `/api/schema/` and the health probes. It was provisioned outside this workspace and is recorded in [DELIVERABLES.md](../DELIVERABLES.md) once published; the temporary session preview at `https://8000-i7d6wocviwvln48i3xhfx.e2b.app` exposes all of them.
 
 The reference production gateway currently keeps Django's docs/admin private and sends application API traffic through the Next.js BFF. Publishing a separate bearer-auth API hostname requires configuring the gateway and allowed hosts as part of deployment; do not expose Gunicorn directly. The media endpoint supports a local binary response or an owner-authorized 302 redirect to an expiring private-storage read URL. The selected Render deployment publishes Django docs directly; its production admin routes are disabled.
 

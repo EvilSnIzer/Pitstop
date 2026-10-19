@@ -1,125 +1,167 @@
-# Pitstop deliverables
+# Pitstop — deliverables
 
-Status of each requested deliverable, with the evidence behind it. Everything marked
-*verified* was executed on 25 September 2026 against commit `fa53fa4` plus the changes on
-this branch.
+Every item on the requested list, with its status, location and the evidence behind it.
+Verified 25 September 2026.
 
-| Requested deliverable | Status | Where |
-|---|---|---|
-| GitHub repository | **Delivered** — public repo, `main` is the default branch | <https://github.com/EvilSnIzer/Pitstop> |
-| Live frontend URL | **Live session preview** (production standalone build). Permanent hosting not yet provisioned — see [Permanent hosting](#permanent-hosting) | <https://3000-i7d6wocviwvln48i3xhfx.e2b.app> |
-| Live backend API URL | **Live session preview** (Gunicorn + WSGI, `DEBUG=0`, admin disabled) | <https://8000-i7d6wocviwvln48i3xhfx.e2b.app> |
-| README with setup instructions | **Delivered** | [README.md](README.md) |
-| API documentation | **Delivered** — reference, OpenAPI schema and live Swagger UI | [docs/API_REFERENCE.md](docs/API_REFERENCE.md), [docs/openapi.yaml](docs/openapi.yaml), `/api/docs/` on the API URL |
-| Short architecture explanation | **Delivered** | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| # | Requested deliverable | Status | Location |
+|---|---|---|---|
+| 1 | GitHub repository | **Delivered** | <https://github.com/EvilSnIzer/Pitstop> |
+| 2 | Live frontend URL | **Delivered — live and verified** | <https://pitstop-pi-ochre.vercel.app> |
+| 3 | Live backend API URL | **Live and verified** through the same origin; the Django service's own hostname is one field to paste in — see [Backend hostname](#3-live-backend-api-url) | <https://pitstop-pi-ochre.vercel.app/api/v1> |
+| 4 | README with setup instructions | **Delivered** | [README.md](README.md) |
+| 5 | API documentation | **Delivered** | [docs/API_REFERENCE.md](docs/API_REFERENCE.md), [docs/openapi.yaml](docs/openapi.yaml), live `/api/docs/` |
+| 6 | Short architecture explanation | **Delivered** | [ARCHITECTURE.md](ARCHITECTURE.md) |
 
-Supporting material: [deployment runbook](deploy/README.md), [one-click free deploy](deploy/RENDER_ONE_CLICK.md),
-[verification history](VERIFICATION.md), [hosting adaptation notes](HOSTING_VERIFICATION.md),
-[CI](.github/workflows/ci.yml).
+Supporting material: [handoff notes](HANDOFF.md), [deployment runbook](deploy/README.md),
+[one-click Render guide](deploy/RENDER_ONE_CLICK.md), [verification history](VERIFICATION.md),
+[CI workflow](.github/workflows/ci.yml), [live-stack smoke test](scripts/smoke_test.py).
 
-## The two live URLs
+---
 
-Both are the real applications, not mocks: Next.js 16.3.6 serving the standalone
-production build, and Django 5.2.17 under Gunicorn (2 workers × 4 threads, `DEBUG=0`,
-`DJANGO_ADMIN_ENABLED=0`), connected by the same-origin BFF.
+## 1. GitHub repository
 
-- Frontend: `https://3000-i7d6wocviwvln48i3xhfx.e2b.app` — register, log in, chat, attach
-  media, run diagnosis, request a booking.
-- Backend: `https://8000-i7d6wocviwvln48i3xhfx.e2b.app/health/live/` ·
-  `/health/ready/` · `/api/schema/` · `/api/docs/` (Swagger UI) · `/api/v1/…` with
-  `Authorization: Bearer <access>`.
+<https://github.com/EvilSnIzer/Pitstop> — public, default branch `main`, created 24 Sep 2026.
 
-These are **workspace preview hostnames tied to this working session**; they are not
-permanent hosting and will stop answering when the session's sandbox stops. Treat them as
-a working demonstration of the deployed artefacts, and use
-[deploy/RENDER_ONE_CLICK.md](deploy/RENDER_ONE_CLICK.md) for URLs that outlive the session.
+`main` is at `fa53fa4`. The live production deployment is built from Vercel's production
+branch (normally `main`); I could not read the Vercel project settings from here, so treat
+that one detail as unchecked.
+[Pull request #4](https://github.com/EvilSnIzer/Pitstop/pull/4) (branch
+`arena/01a0d9ac-pitstop`, tip `84e6c27`) adds this deliverables record, the CI workflow,
+the `APP_ORIGIN` fix and the smoke test; all four CI jobs pass on it.
 
-## Verification behind these URLs
+## 2. Live frontend URL
 
-Commands run in this workspace (Python 3.11.2 + Node 22.22.3 were the newest interpreters
-available here; the project targets Python 3.13 / Node 24 and CI runs those):
+**<https://pitstop-pi-ochre.vercel.app>** — Next.js 16.3.6 on Vercel, production deployment.
+
+Verified on 25 September 2026 over the public internet:
+
+| Request | Result |
+|---|---|
+| `GET /` | 200 — page title `Pitstop — Your drive, understood`, workspace-loading state |
+| `GET /login` | 200 — full sign-in page renders (form, registration link, hero image via `/_next/image`) |
+| `GET /api/v1/auth/me` | 401 `{"detail":"Authentication credentials were not provided.","code":"not_authenticated","request_id":"3eec2d00-94dc-4bb2-805b-2e56f49b5dfe"}` |
+
+That third line is the important one. The `request_id` field is added by Django's exception
+handler, so the BFF reached a live Django process and returned its response — an unreachable
+backend would have produced the BFF's own `503 upstream_unavailable`. Registration and other
+mutations were **not** exercised from this workspace (no outbound HTTPS and no browser
+here); run the [smoke test](#reproducing-the-verification) against the live URL to cover them.
+
+A secondary demo runs as this session's workspace preview while the sandbox is alive:
+<https://3000-i7d6wocviwvln48i3xhfx.e2b.app>. It is not permanent hosting.
+
+## 3. Live backend API URL
+
+The API is live and reachable now, same-origin, at:
+
+**<https://pitstop-pi-ochre.vercel.app/api/v1>** — cookie-authenticated through the BFF,
+which is what the browser uses. Endpoints, payloads, error codes and retry semantics are in
+[docs/API_REFERENCE.md](docs/API_REFERENCE.md); the machine-readable schema is
+[docs/openapi.yaml](docs/openapi.yaml).
+
+**One field to fill in.** Direct bearer-token clients, Swagger UI (`/api/docs/`), the raw
+schema (`/api/schema/`) and the health probes (`/health/live/`, `/health/ready/`) live on the
+Django service itself, not behind the BFF. Its public hostname was provisioned outside this
+workspace, so it is not recorded here:
+
+```text
+Live Django API URL:  ____________________   (e.g. https://pitstop-api-ab12.onrender.com)
+```
+
+Find it in the Render dashboard → the `pitstop-api` service → **Settings → Domains** (it is
+also the value of the Vercel project's `NEXT_PUBLIC_DIRECT_API_URL`). Then confirm:
+
+```bash
+curl https://<that-host>/health/live/    # {"status": "ok"}
+curl https://<that-host>/health/ready/   # {"status": "ready"}
+open https://<that-host>/api/docs/       # Swagger UI
+```
+
+Until that hostname is published, use the session preview API, which exposes all of it:
+<https://8000-i7d6wocviwvln48i3xhfx.e2b.app> (`/health/live/`, `/api/v1/`, `/api/docs/`,
+`/api/schema/`). It stops answering when this session's sandbox stops.
+
+## 4. README with setup instructions
+
+[README.md](README.md) — prerequisites, backend and frontend setup, environment variables,
+authentication model, API contract table, upload/AI cost controls, the full verification
+command list, and deployment limits.
+
+## 5. API documentation
+
+- [docs/API_REFERENCE.md](docs/API_REFERENCE.md) — auth (direct bearer vs. browser cookies),
+  every endpoint with request/response shapes, `curl` examples, upload limits and ticket
+  flow, idempotency and concurrency rules, error-code table, throttle and budget defaults.
+- [docs/openapi.yaml](docs/openapi.yaml) — machine-readable schema. Regenerated with
+  `spectacular --validate --fail-on-warn` and **byte-identical** to the app's current export
+  (`diff` exit code 0).
+- Live Swagger UI: `/api/docs/` on the Django hostname above (or on the preview API).
+
+## 6. Short architecture explanation
+
+[ARCHITECTURE.md](ARCHITECTURE.md) — request path, the five responsibilities (UI, business
+logic, AI minimisation, consistency, hosting) and the deployment topologies, with the
+guarantees each one does and does not make.
+
+---
+
+## Verification evidence
+
+Executed in a clean workspace on 25 September 2026 (Python 3.11.2 / Node 22.22.3 locally;
+Python 3.13 / Node 24 in CI, which is what the project targets).
 
 | Check | Result |
 |---|---|
-| `ruff check .` / `black --check .` | Passed (`chatbot/bot/gemini.py` was reformatted by Black first — the previous commit left it unformatted) |
+| `ruff check .` / `black --check .` | Passed (Black first reformatted `chatbot/bot/gemini.py`) |
 | `manage.py check` / `makemigrations --check --dry-run` | No issues; no migration drift |
-| `manage.py spectacular --validate --fail-on-warn` | Passed, and the export is **byte-identical** to `docs/openapi.yaml` |
-| `pytest` (SQLite, no Gemini key) | **98 passed, 2 skipped** |
-| `pip check` / `pip-audit -r requirements.txt` | No broken requirements; **no known vulnerabilities** |
-| `npm run lint` / `npm run typecheck` | Passed |
-| `npm run test:proxy` | **11 passed** |
-| `npm run build` (standalone) | Passed — 5 routes, `/api/[...path]` dynamic |
+| `spectacular --validate --fail-on-warn` | Passed; export byte-identical to `docs/openapi.yaml` |
+| `pytest` | **98 passed, 2 skipped** |
+| `pip check` / `pip-audit -r requirements.txt` | Clean / **no known vulnerabilities** |
+| `npm run lint` / `typecheck` / `test:proxy` | Passed / passed / **11 passed** |
+| `npm run build` (standalone) | Passed; `/`, `/login`, `/register` and all 14/13/13 referenced chunks return 200 |
 | `npm audit --omit=dev --audit-level=high` | **0 vulnerabilities** |
-| End-to-end smoke test through the BFF and the direct API ([`scripts/smoke_test.py`](scripts/smoke_test.py), no mocks) | **18/18 checks passed** |
+| CI on `84e6c27` | Backend SQLite **pass**, backend PostgreSQL 16 + Redis 7 **pass**, frontend **pass**, Chromium browser regressions **pass** |
+| [scripts/smoke_test.py](scripts/smoke_test.py) against a running stack | **18/18 checks passed** |
+| Live Vercel frontend | `/`, `/login`, `/api/v1/auth/me` verified as above |
 
-Smoke test highlights (real HTTP, no mocks): registration returned `201
-{"authenticated":true}` with `pitstop_access`/`pitstop_refresh` cookies carrying
-`HttpOnly; Secure; SameSite=none; Partitioned`; a mutation without `X-Pitstop-Request`
-returned `403 csrf_failed`; a session was created with its seeded greeting; a 5,548-byte
-JPEG uploaded through the BFF and came back byte-identical from `/api/v1/media/{id}/`
-while an anonymous request got `401`; one intake sentence filled all four slots
-(`diagnosis_ready: true`); an unchanged retry with the same `Idempotency-Key` replayed with
-`Idempotency-Replayed: true`; diagnosis with no provider key returned
-`503 ai_not_configured` instead of inventing an assessment; `/health/live/` and
-`/health/ready/` returned `200`; bearer authentication served `/auth/me/`, the session list
-and history.
+### Reproducing the verification
 
-Two environment limits, stated plainly:
+```bash
+# Local stack, from the repository root:
+backend/.venv/bin/python scripts/smoke_test.py
 
-- **The browser regression suite cannot run in this workspace.** Playwright's Chromium
-  download is blocked here, so `npm run test:e2e` was executed in CI instead — see below.
-- **`ffprobe` had to be supplied manually.** The system package manager is unreachable, so a
-  static `ffprobe` build was placed on `PATH` for the run above. Without it, audio
-  validation returns `503` instead of `400` and three hardening tests fail (95 passed /
-  3 failed); with it, all 98 pass. Image uploads only need Pillow.
+# Against the live deployment (fills in the missing mutation coverage):
+PITSTOP_FE_URL=https://pitstop-pi-ochre.vercel.app \
+PITSTOP_ORIGIN=https://pitstop-pi-ochre.vercel.app \
+PITSTOP_API_URL=https://pitstop-pi-ochre.vercel.app \
+  backend/.venv/bin/python scripts/smoke_test.py
+```
 
-## Continuous integration
+It exits non-zero on the first failed expectation, so it works as a post-deploy gate.
+Point `PITSTOP_API_URL` at the Django hostname to also cover bearer auth and the health
+endpoints directly.
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) — referenced by `README.md` and
-`VERIFICATION.md` but absent from the repository until this change — runs on pushes to
-`main`, on pull requests and on demand. On [pull request #4](https://github.com/EvilSnIzer/Pitstop/pull/4)
-(run 36172644519) every job passed:
+---
 
-| Job | Result |
-|---|---|
-| Backend (Python 3.13, SQLite) | **pass** in 2m 5s |
-| Backend (Python 3.13, PostgreSQL 16 + Redis 7 — the version the Blueprint provisions) | **pass** in 1m 28s |
-| Frontend (Node 24) — lint, typecheck, proxy tests, standalone build, audit | **pass** in 46s |
-| Browser regressions (Chromium) — 14 specs across `auth.spec.ts` and `workspace.spec.ts` | **pass** in 2m 0s |
+## Known issues
 
-The first CI run of the browser job failed, and the failure was real: Playwright's server
-was started without `APP_ORIGIN`, and the BFF rejects any mutation whose `Origin` it does
-not recognise, so every UI-driven request returned `403 csrf_failed`. The same gap affected
-the documented `npm run dev` flow. `playwright.config.ts` now starts the server with
-`APP_ORIGIN` set to the browser's base URL, and `frontend/.env.example` sets
-`APP_ORIGIN=http://localhost:3000`; matching origins reach the API while
-`http://evil.example` is still rejected.
-
-## Permanent hosting
-
-No cloud account, credential or paid resource was available in this session, so no permanent
-hostname has been provisioned by this work. Two things are true about the account this
-repository already lives in:
-
-- **The existing Vercel Git integration currently fails.** Deploying this branch produced a
-  failed deployment (check `Vercel`: *"Deployment has failed"*). The cause is reproducible
-  locally: `next.config.mjs` throws when `VERCEL` is set without `API_PROXY_URL`,
-  `APP_ORIGIN` and `NEXT_PUBLIC_DIRECT_API_URL`, and running `VERCEL=1 npx next build`
-  with no variables fails with exactly *"Vercel requires API_PROXY_URL, APP_ORIGIN and
-  NEXT_PUBLIC_DIRECT_API_URL"*. The same build succeeds when those three are provided, so
-  setting them in Vercel → Project Settings → Environment Variables and redeploying is what
-  unblocks it. `API_PROXY_URL` must point at a deployed Django API, which does not exist
-  yet — the Vercel route therefore needs the API deployed first.
-- **The one-click path has no such dependency.** The repository is deployment-ready:
-
-1. Click **Deploy to Render** in [README.md](README.md) (or follow
-   [deploy/RENDER_ONE_CLICK.md](deploy/RENDER_ONE_CLICK.md)) — the root
-   [`render.yaml`](render.yaml) Blueprint provisions the website, the API, PostgreSQL and
-   Redis on Render's free plan and wires them over the private network.
-2. Record the two resulting `onrender.com` hostnames here, replacing the preview URLs above,
-   after smoke-testing HTTPS, auth, ownership, persistence and `/health/ready/`.
-3. Free-plan limits still apply: 15-minute idle spin-down, ~1 minute cold start, free
-   Postgres expires after 30 days, 750 instance-hours per workspace-month.
-
-Add a backend-only `GEMINI_API_KEY` to the API service to enable real diagnosis; until then
-intake is deterministic and diagnosis reports `ai_not_configured` by design.
+1. **Vercel preview deployments fail; production succeeds.** The live production build
+   works, but the three preview deployments for this branch all report `failure`.
+   `next.config.mjs` throws when `VERCEL` is set without `API_PROXY_URL` and
+   `NEXT_PUBLIC_DIRECT_API_URL` (`APP_ORIGIN` auto-derives from `VERCEL_URL`), and Vercel
+   environment variables are enabled per environment. Reproduced locally:
+   `VERCEL=1 npx next build --webpack` with no variables fails with
+   *"Vercel requires API_PROXY_URL, APP_ORIGIN and NEXT_PUBLIC_DIRECT_API_URL"*; the same
+   build succeeds when they are supplied. Most likely those two are enabled for Production
+   only — enable them for Preview in Project Settings → Environment Variables and previews
+   will build. The Vercel build log itself needs account access, so this is a diagnosis from
+   reproduction, not a read log.
+2. **No Gemini key is configured**, so media analysis adds an explanatory note and diagnosis
+   returns `503 ai_not_configured` rather than inventing an assessment. Add a backend-only
+   `GEMINI_API_KEY` to enable it.
+3. **Not verifiable in this workspace:** the browser suite cannot run here (Playwright's
+   Chromium download is blocked, so CI covers it), and there is no container runtime
+   (`docker` and `podman` are absent), so the Dockerfiles and Compose stack remain unbuilt.
+   `ffprobe` had to be supplied manually for local media validation.
+4. **Booking is a request record**, not a confirmed appointment — no mechanic dispatch or
+   calendar integration. AI confidence is model-generated, not a calibrated probability.

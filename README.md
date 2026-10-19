@@ -2,15 +2,13 @@
 
 A mobile-first car-care workspace with persisted conversations, image/audio/video attachments, deterministic intake, Gemini-assisted diagnosis, and mechanic booking requests. AI guidance is not a safety inspection; confidence is model-generated, not a calibrated probability. A pending booking is **not** a confirmed appointment.
 
-## Live demo (running now, session-scoped)
+## Live deployment
 
-- **Frontend:** <https://3000-i7d6wocviwvln48i3xhfx.e2b.app> — the standalone production build.
-- **Backend API:** <https://8000-i7d6wocviwvln48i3xhfx.e2b.app> — `/health/live/`, `/health/ready/`, `/api/v1/`, plus Swagger UI at `/api/docs/` and the schema at `/api/schema/`.
+- **Frontend:** <https://pitstop-pi-ochre.vercel.app> — production deployment, verified live.
+- **Backend API:** <https://pitstop-pi-ochre.vercel.app/api/v1> — same-origin through the BFF; contract in [docs/API_REFERENCE.md](docs/API_REFERENCE.md).
+- **Session preview (temporary):** frontend <https://3000-i7d6wocviwvln48i3xhfx.e2b.app>, API <https://8000-i7d6wocviwvln48i3xhfx.e2b.app> — the preview API also exposes `/health/live/`, `/health/ready/`, Swagger at `/api/docs/` and `/api/schema/` for bearer-token clients. It stops answering when the session's sandbox stops.
 
-These are workspace preview hostnames for the running development session, not permanent
-hosting: they stop answering when the session's sandbox stops. Deliverable status, the
-verification evidence behind them and the permanent-hosting steps are in
-[DELIVERABLES.md](DELIVERABLES.md).
+Deliverable status, verification evidence and known issues: [DELIVERABLES.md](DELIVERABLES.md).
 
 ## Deploy it — one click, all free, all on Render
 
